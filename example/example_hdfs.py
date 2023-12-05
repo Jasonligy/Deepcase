@@ -23,7 +23,7 @@ if __name__ == "__main__":
         path    = 'data/hdfs/hdfs_test_normal',
         verbose = True,
     )
-
+    
     # In case no labels are provided, set labels to -1
     # IMPORTANT: If no labels are provided, make sure to manually set the labels
     # before calling the interpreter.score_clusters method. Otherwise, this will

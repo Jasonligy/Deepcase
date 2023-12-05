@@ -161,6 +161,7 @@ class DeepCASE(object):
             """
 
         # Fit the ContextBuilder
+
         self.context_builder.fit(
             X             = X,
             y             = y,
@@ -171,7 +172,8 @@ class DeepCASE(object):
             teach_ratio   = teach_ratio,
             verbose       = verbose,
         )
-
+        print('self.context_builder')
+        print(X.shape)
         # Fit the Interpreter
         self.interpreter.fit(
             X          = X,

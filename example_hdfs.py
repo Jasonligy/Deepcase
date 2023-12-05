@@ -23,7 +23,18 @@ if __name__ == "__main__":
         path    = 'example/data/hdfs/hdfs_test_normal',
         verbose = True,
     )
-
+    # print(context.shape)
+    # print(events[:10])
+    # print(mapping)
+    # table={}
+    # for i in range(len(context)):
+        
+    #     count=len(torch.unique(context[i]))
+    #     if count in table.keys():
+    #         table[count]+=1
+    #     else:
+    #         table[count]=1
+    # print(table)
     # In case no labels are provided, set labels to -1
     # IMPORTANT: If no labels are provided, make sure to manually set the labels
     # before calling the interpreter.score_clusters method. Otherwise, this will
@@ -70,7 +81,7 @@ if __name__ == "__main__":
     context_builder.fit(
         X             = context_train,               # Context to train with
         y             = events_train.reshape(-1, 1), # Events to train with, note that these should be of shape=(n_events, 1)
-        epochs        = 10,                         # Number of epochs to train with
+        epochs        = 5,                         # Number of epochs to train with
         batch_size    = 128,                         # Number of samples in each training batch, in paper this was 128
         learning_rate = 0.01,                        # Learning rate to train with, in paper this was 0.01
         verbose       = True,                        # If True, prints progress

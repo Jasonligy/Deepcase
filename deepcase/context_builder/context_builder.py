@@ -158,10 +158,13 @@ class ContextBuilder(nn.Module):
             dtype      = torch.long,
             device     = X.device,
         )
-
+        # print('XXX')
+        # print(X.shape)#torch.Size([1583, 10])
         # Encode input
         X_encoded, context_vector = self.encoder(X)
+        # print(X_encoded.shape)#torch.Size([1583, 10, 300])
 
+        # print(context_vector.shape)#torch.Size([1, 1583, 128])
         # Loop over all targets
         for step in range(steps):
             # Compute attention
@@ -169,13 +172,15 @@ class ContextBuilder(nn.Module):
                 context_vector = context_vector,
                 previous_input = decoder_input,
             )
-
+            # print("context encoder")
+            # print(context_vector.shape)#torch.Size([1, 1583, 128])
+            # print(attention_.shape)#torch.Size([1583, 10])
             # Compute event probability distribution
             confidence_ = self.decoder_event(
                 X         = X_encoded,
                 attention = attention_,
             )
-
+            # print(confidence_.shape)
             # Store confidence
             confidence.append(confidence_)
             # Store attention
@@ -189,7 +194,7 @@ class ContextBuilder(nn.Module):
 
         # Return result
         # print('forward')
-        # print(confidence[0].shape)
+        # print(torch.stack(confidence, dim=1).shape)#torch.Size([1583, 1, 300])
         # print(attention[0].shape)
         return torch.stack(confidence, dim=1), torch.stack(attention, dim=1)
 
@@ -359,9 +364,9 @@ class ContextBuilder(nn.Module):
         self.train(mode)
 
         # Return result
-        print("attention")
-        print(confidence[inverse].shape)
-        print(attention[inverse].shape)
+        # print("attention")
+        # print(confidence[inverse].shape)
+        # print(attention[inverse].shape)
         return confidence[inverse], attention[inverse]
 
 
@@ -604,6 +609,8 @@ class ContextBuilder(nn.Module):
             return confidence, attention, inverse, confidence_orig, confidence_optim
 
         # Return result
+        print('confidence')
+        print(confidence.shape)
         return confidence, attention, inverse
 
 

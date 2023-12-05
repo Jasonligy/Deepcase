@@ -201,9 +201,10 @@ class Interpreter(object):
 
         # Group sequences by individual events
         events = group_by(y[mask].squeeze(1).cpu().numpy())
+        print(type(events))
         # Add verbosity, if necessary
         if verbose: events = tqdm(events, desc="Predicting      ")
-
+        count=0
         # Loop over all events
         for event, indices in events:
 
@@ -219,10 +220,11 @@ class Interpreter(object):
             ############################################################
             #                    Case - known event                    #
             ############################################################
-
+            if count==0:
+                print(vectors.shape)
             # Get vectors for given event
             vectors_ = vectors[indices]
-
+            
             # Get unique vectors - optimizes computation time
             vectors_, inverse, _ = sp_unique(vectors_)
 
@@ -232,8 +234,19 @@ class Interpreter(object):
                 return_distance = True,
                 dualtree        = vectors_.shape[0] >= 1e3, # Optimization
             )
+            if count==0:
+                print('distance')
+                print(type(distance))
+                print(distance.shape)
+                print('neighbor')
+                print(type(neighbours))
+                print(neighbours.shape)
             # Get neighbour indices
             neighbours = self.tree[event].get_arrays()[1][neighbours][:, 0]
+            if count==0:
+                print('proces')
+                print(neighbours.shape)
+                print(neighbours)
             # Compute neighbour scores
             scores = np.asarray([
                 self.labels[event][neighbour] for neighbour in neighbours
@@ -249,6 +262,8 @@ class Interpreter(object):
                 scores,                     # If so, assign actual score
                 -3,                         # Else, closest cluster > eps, -3
             )[inverse]
+         
+            count+=1
 
         ####################################################################
         #                     Add non-confident events                     #
@@ -257,7 +272,9 @@ class Interpreter(object):
         result_ = np.full(X.shape[0], -1, dtype=float)
         result_[mask.cpu().numpy()] = result
         result = result_
-
+        print('result')
+        print(result.shape)
+        print(result[inverse_result.cpu().numpy()].shape)
         # Return result
         return result[inverse_result.cpu().numpy()]
 
@@ -372,6 +389,7 @@ class Interpreter(object):
         ####################################################################
 
         # Get optimized vectors
+        #对input进行处理！
         vectors, mask = self.attended_context(
             X                = X,
             y                = y,
@@ -386,11 +404,37 @@ class Interpreter(object):
         ####################################################################
 
         # Group sequences for clustering per event type
+
+        # print('group by')
+        # npX=np.asarray(X)
+        # key=lambda x: x.data.tobytes()
+        # for index, label in enumerate(npX):
+        #     print(label)
+        #     print(index)
+        #     hashed = key(label)
+        #     print('hashed')
+        #     print(hashed)
+        #     break
+            # Add label to lookup table if it does not exist
+            # if hashed not in groups:
+            #     groups[hashed] = [key(label), list()]
+            # # Append item
+            # groups[hashed][1].append(index)
+        # print(X[0].data.tobytes())
+
+
+
         indices_y = group_by(
             X   = y[mask].squeeze(1).cpu().numpy(),
             key = lambda x: x.data.tobytes(),
         )
-
+        # print("indices_y")
+        # print(len(indices_y))
+        # for i in range(len(indices_y)):
+        #     print(indices_y[i][1].shape)
+        # print(X[indices_y[0][1]].shape)
+        # print(X[indices_y[0][1]])
+        #为什么array不同但是to bytes却是相同的
         # Add verbosity if necessary
         if verbose: indices_y = tqdm(indices_y, desc="Clustering      ")
 
@@ -403,7 +447,7 @@ class Interpreter(object):
 
         # Loop over each event
         for event, context_mask in indices_y:
-
+         
             # Compute clusters per event
             clusters = self.dbscan.dbscan(
                 X           = vectors[context_mask],
@@ -413,8 +457,8 @@ class Interpreter(object):
             )
 
             # Add offset to clusters to ensure unique identifiers per event
-            clusters[clusters != -1] += max(0, result.max() + 1)
-
+            clusters[clusters != -1] += max(0, result.max() + 1)#确保不同的cluster里面是不同的数字，因为每一个循环都是不同的类
+            
             # Set resulting clusters
             result[context_mask] = clusters
 
@@ -439,10 +483,9 @@ class Interpreter(object):
         self.events = y.reshape(-1).cpu().numpy()
 
         # Return clusters
-        print('clusters')
-        print(clusters.shape)
+      
         return clusters
-
+        #self.cluster把每一个sequence都赋予了一个数字。代表了聚在第几类
     ########################################################################
     #                            Manual scoring                            #
     ########################################################################
@@ -499,12 +542,12 @@ class Interpreter(object):
 
         # If verbose, add printing
         if verbose: clustered_events = tqdm(clustered_events, desc="Scoring")
-
+        count=0
         # Loop over all clustered events
-        for event, indices in clustered_events:
+        for event, indices in clustered_events:#不是按照每一个cluster分的，而是按照每一个event分的
             # Get relevant vectors for given event
             vectors = self.vectors[indices]
-
+            shape=vectors.shape
             # Get unique vectors - optimizes computation time
             vectors, inverse, _ = sp_unique(vectors)
 
@@ -517,10 +560,24 @@ class Interpreter(object):
             data, index_tree, _, _ = self.tree[event].get_arrays()
             _, index_vector = zip(*group_by(inverse))
             assert np.all(data == vectors.toarray())
-
+            if count==0:
+                print('shape')
+                print(shape)
+                print(vectors.shape)
+                print(indices)
+                print(inverse)
+                print('index_vector')
+                print(index_vector)
+                print(_)
+                print(index_tree)
             for index, mapping in zip(index_tree, index_vector):
+                # if count==0:
+                #     print('mapping')
+                #     print(mapping)
+                #     print(index)
+                    
                 self.labels[event][index] = score[mapping].max()
-
+            count+=1
         # Return self
         return self
 
@@ -558,7 +615,7 @@ class Interpreter(object):
         scores = np.asarray(scores)
 
         # Initialise result
-        result = np.full(scores.shape[0], NO_SCORE, dtype=float)
+        result = np.full(scores.shape[0], NO_SCORE, dtype=float)#注意这个no_score的值
 
         # Check if scores are same shape as clusters
         if scores.shape != self.clusters.shape:
@@ -570,6 +627,7 @@ class Interpreter(object):
             ))
 
         # Group by clusters
+        #indices是同一个score的所有index位置
         for cluster, indices in group_by(self.clusters):
             # Skip "no cluster" cluster
             if cluster == -1: continue
@@ -701,11 +759,17 @@ class Interpreter(object):
         )
 
         # Check where confidence is above threshold
+        # print('confidence_inter')
+        # print(confidence.shape)
+        # print(attention.shape)
         mask = confidence >= threshold
-        print('mask')
-        print(mask.shape)
-        print(X.shape)
-        print(X.shape)
+        # print('mask')
+        # print(mask.shape)
+        # print(X.shape)
+        # print(X.shape)
+        # print(X[mask].shape)
+        # print(attention[mask].shape)
+        # print(self.features)
         logger.info("attended_context: Optimize attention finished")
 
         ####################################################################
@@ -715,14 +779,19 @@ class Interpreter(object):
         logger.info("attended_context: Create vectors")
 
         # Perform vectorization
+        #把每一个event sequence的vector都扩展到300，聚类的时候就可以对齐了
         vectors = self.vectorize(
             X         = X[mask],
             attention = attention[mask],
             size      = self.features,
         )
         print('vector')
+        print(X.shape)
+        print(X[mask].shape)
+        print(attention[mask].shape)
+        print(type(vectors))
         print(vectors.shape)
-
+        print(confidence.shape)
         # Round attention to 4 decimal places (for quicker analysis)
         vectors = np.round(vectors, decimals=4)
 
@@ -782,6 +851,9 @@ class Interpreter(object):
         )
 
         # Compute confidence of y
+        # print('confidence_attn')
+        # print(confidence.shape)
+        # print(y.squeeze(1))
         confidence = confidence[torch.arange(y.shape[0]), y.squeeze(1)]
 
         # Return confidence and attention
